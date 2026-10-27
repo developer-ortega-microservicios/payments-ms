@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, RawBodyRequest } from '@nestjs/common';
 import Stripe from 'stripe';
 import { envs } from '../config/envs.js';
 import { PaymentSessionDto } from './dto/payment-session.dto.js';
+import type { Request, Response } from 'express';
 
 @Injectable()
 export class PaymentsService {
@@ -36,6 +37,24 @@ export class PaymentsService {
         });
 
         return session;
+    }
+
+    async stripeWebhook(req: RawBodyRequest<Request>, res: Response) {
+        const sig = req.headers['stripe-signature'];
+
+        if (!sig || !req.rawBody) {
+            throw new BadRequestException('Missing Stripe signature or raw body');
+        }
+
+        let event: Stripe.Event;
+        const endpointSecret = envs.StripeEndpointSecret
+
+
+        try {
+            event = this.stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+        } catch (error: any) {
+            res.status(400).send(`WebHook Error: ${error.message}`)
+        }
     }
 
 }
