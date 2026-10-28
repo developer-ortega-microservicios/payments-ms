@@ -71,12 +71,12 @@ export class PaymentsService {
         }
 
         switch( event.type ){
-            case 'payment_intent.succeeded':
+            case 'charge.succeeded':
                 const chargeSucceeded = event.data.object;
                 const payload = {
                     stripePaymentId: chargeSucceeded.id,
                     orderId: chargeSucceeded.metadata.orderId,
-                    receiptUrl: chargeSucceeded.receipt_email
+                    receiptUrl: chargeSucceeded.receipt_url
                 }
                 this.client.emit('payment.succeeded', payload);
             break;
