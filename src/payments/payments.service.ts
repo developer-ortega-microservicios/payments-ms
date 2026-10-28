@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { envs } from '../config/envs.js';
 import { PaymentSessionDto } from './dto/payment-session.dto.js';
 import type { Request, Response } from 'express';
+import { metadata } from 'reflect-metadata/no-conflict';
 
 @Injectable()
 export class PaymentsService {
@@ -11,7 +12,7 @@ export class PaymentsService {
 
     async createPaymentSession(paymentSessionDto: PaymentSessionDto) {
 
-        const { currency, items } = paymentSessionDto;
+        const { currency, items, orderId } = paymentSessionDto;
         const lineItems = items.map(item => {
             return {
                 price_data: {
@@ -28,7 +29,9 @@ export class PaymentsService {
         const session = await this.stripe.checkout.sessions.create({
             // Colocar aqui el ID de mi orden
             payment_intent_data: {
-                metadata: {}
+                metadata: {
+                    orderId: orderId
+                }
             },
             line_items: lineItems,
             mode: 'payment',
@@ -58,9 +61,12 @@ export class PaymentsService {
         }
 
         switch( event.type ){
-            case 'charge.succeeded':
+            case 'payment_intent.succeeded':
+                const chargeSucceeded = event.data.object;
                 //TODO llamar nuestro microservicio
-                console.log(event);
+                console.log({
+                    metadata: chargeSucceeded.metadata
+                });
             break;
 
             default:
