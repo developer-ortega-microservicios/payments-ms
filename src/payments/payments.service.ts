@@ -53,8 +53,21 @@ export class PaymentsService {
         try {
             event = this.stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
         } catch (error: any) {
-            res.status(400).send(`WebHook Error: ${error.message}`)
+            res.status(400).send(`WebHook Error: ${error.message}`);
+            return;
         }
+
+        switch( event.type ){
+            case 'charge.succeeded':
+                //TODO llamar nuestro microservicio
+                console.log(event);
+            break;
+
+            default:
+                console.log(`Event ${event.type} not handled`)
+        }
+
+        return res.status(200).json({ sig });
     }
 
 }
