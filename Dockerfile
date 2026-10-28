@@ -8,4 +8,4 @@ RUN npm install --legacy-peer-deps
 
 COPY . .
 
-EXPOSE 3003
+EXPOSE 3000
