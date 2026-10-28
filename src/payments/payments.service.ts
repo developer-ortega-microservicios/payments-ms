@@ -1,9 +1,8 @@
 import { BadRequestException, Injectable, RawBodyRequest } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { envs } from '../config/envs.js';
 import { PaymentSessionDto } from './dto/payment-session.dto.js';
-import type { Request, Response } from 'express';
-import { metadata } from 'reflect-metadata/no-conflict';
 
 @Injectable()
 export class PaymentsService {
@@ -39,7 +38,11 @@ export class PaymentsService {
             cancel_url: envs.stripeCancelUrl
         });
 
-        return session;
+        return {
+            cancelUrl: session.cancel_url,
+            successUrl: session.success_url,
+            url: session.url
+        };
     }
 
     async stripeWebhook(req: RawBodyRequest<Request>, res: Response) {
