@@ -2,7 +2,7 @@
 
 Microservicio de pagos hecho con **NestJS** y **TypeScript**, parte del proyecto del curso [NestJS + Microservicios](https://www.udemy.com/course/nestjs-microservicios/) (Udemy, DevTalles). Se integra con **Stripe** para crear sesiones de pago y recibir sus confirmaciones por **webhook**.
 
-> Proyecto de práctica, **en progreso**. Se actualiza a medida que avanza el curso.
+> Proyecto de práctica completado: este servicio forma parte de una tienda de 5 microservicios desplegada en **Google Kubernetes Engine (GKE)** con Helm. Ver el [launcher](https://github.com/developer-ortega-microservicios/products-launcher).
 
 ## Arquitectura
 
@@ -14,13 +14,25 @@ client-gateway ──NATS──→ orders-ms ──NATS──→ payments-ms ─
 
 Repositorios relacionados en la organización [developer-ortega-microservicios](https://github.com/developer-ortega-microservicios).
 
-## Qué se va a construir
+## Funcionalidades
 
 - Creación de sesiones de pago en Stripe (Checkout) a partir de una orden
 - Recepción y validación de webhooks de Stripe (firma del evento)
 - Notificación a `orders-ms` cuando un pago se confirma
 - Comunicación con el resto de servicios por **NATS**
 - Variables de entorno validadas con **Joi**
+
+## Endpoints y mensajes
+
+| Tipo | Ruta / patrón | Descripción |
+|------|---------------|-------------|
+| HTTP GET | `/` | Health check |
+| HTTP POST | `/payments/create-payment-session` | Crea una sesión de Stripe Checkout |
+| HTTP GET | `/payments/success` | Página a la que vuelve el cliente tras pagar |
+| HTTP GET | `/payments/cancelled` | Página a la que vuelve el cliente si cancela |
+| HTTP POST | `/payments/webhook` | Recibe los eventos de Stripe y valida su firma |
+| NATS (mensaje) | `create.payment.session` | Lo usa `orders-ms` para pedir una sesión de pago |
+| NATS (evento) | `payment.succeeded` | Se emite a `orders-ms` cuando el pago se confirma |
 
 ## Stack técnico
 
@@ -48,7 +60,7 @@ Repositorios relacionados en la organización [developer-ortega-microservicios](
    NATS_SERVERS=nats://localhost:4222
    STRIPE_SECRET=sk_test_...
    STRIPE_SUCCESS_URL=http://localhost:3003/payments/success
-   STRIPE_CANCEL_URL=http://localhost:3003/payments/cancel
+   STRIPE_CANCEL_URL=http://localhost:3003/payments/cancelled
    STRIPE_ENDPOINT_SECRET=whsec_...
    ```
 
@@ -56,6 +68,14 @@ Repositorios relacionados en la organización [developer-ortega-microservicios](
    ```bash
    npm run start:dev
    ```
+
+## Despliegue
+
+- **Imagen de producción:** `dockerfile.prod` (build multi-etapa sobre `node:22-alpine`).
+- **Build y publicación:** `cloudbuild.yml` construye la imagen con Cloud Build y la sube a **Artifact Registry** (`image-registry/payments-ms`).
+- **Kubernetes:** se despliega en GKE Autopilot con el chart de Helm `k8s/tienda-gke` del [launcher](https://github.com/developer-ortega-microservicios/products-launcher); se comunica con el resto de servicios por NATS dentro del clúster.
+- **Secrets:** `STRIPE_SECRET` y `STRIPE_ENDPOINT_SECRET` llegan desde el secret de Kubernetes `payments-secrets`.
+- **Webhook:** el Ingress expone `/payments/*`; en Stripe (modo de prueba) se registra `http://<IP-del-Ingress>/payments/webhook` con el evento `charge.succeeded` (el servicio lo procesa y avisa a `orders-ms`).
 
 ## Variables de entorno
 
